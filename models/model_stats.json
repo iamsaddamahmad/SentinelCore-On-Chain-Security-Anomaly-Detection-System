@@ -1,0 +1,28 @@
+{
+  "training_date": "2026-09-09 16:42:14",
+  "samples": 9841,
+  "features": [
+    "Sent tnx",
+    "Received Tnx",
+    "Number of Created Contracts",
+    "Unique Received From Addresses",
+    "Unique Sent To Addresses",
+    "min value received",
+    "max value received ",
+    "avg val received",
+    "min val sent",
+    "max val sent",
+    "avg val sent",
+    "total transactions (including tnx to create contract",
+    "total Ether sent",
+    "total ether received",
+    "total ether balance",
+    " Total ERC20 tnxs",
+    " ERC20 total Ether received",
+    " ERC20 total ether sent",
+    " ERC20 min val rec",
+    " ERC20 max val rec",
+    " ERC20 avg val rec"
+  ],
+  "contamination": 0.05
+}

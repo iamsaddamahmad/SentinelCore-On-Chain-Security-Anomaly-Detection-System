@@ -1,0 +1,39 @@
+﻿# Python virtual environment
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+
+# Config with real keys (KEEP THIS!)
+config.py
+
+# Logs and alerts
+logs/
+alerts/
+*.log
+
+# Data files (keep the dataset, but ignore generated CSVs)
+data/*.csv
+!data/transaction_dataset.csv
+
+# Model files (optional - you may want to keep these)
+models/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter notebooks
+*.ipynb

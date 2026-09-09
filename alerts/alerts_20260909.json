@@ -1,0 +1,17 @@
+[
+  {
+    "timestamp": "2026-09-09T17:22:36.081806",
+    "alert": {
+      "type": "TEST_ALERT",
+      "severity": "HIGH",
+      "details": "This is a test alert to verify the system is working"
+    },
+    "transaction": {
+      "hash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+      "from": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",
+      "to": "0xabcdef1234567890abcdef1234567890abcdef12",
+      "value_eth": 150.0,
+      "block": 25939589
+    }
+  }
+]
