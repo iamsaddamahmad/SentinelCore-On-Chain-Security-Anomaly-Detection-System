@@ -4,15 +4,16 @@
 # Compatible with the Kaggle dataset (columns: FLAG, Address, etc.)
 # ============================================================
 
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-import joblib
-import os
 import json
+import os
+
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import IsolationForest
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.preprocessing import StandardScaler
+
 from config import *
 from utils import *
 
@@ -42,7 +43,8 @@ class MLAnomalyDetector:
             print("❌ No data files found! Run data_collector.py first.")
             return None
 
-        latest_file = sorted(csv_files)[-1]
+        # latest_file = sorted(csv_files)[-1]
+        latest_file = max(csv_files)
         filepath = os.path.join(DATA_DIR, latest_file)
         print(f"📂 Loading latest: {latest_file}")
         return pd.read_csv(filepath)
@@ -73,7 +75,7 @@ class MLAnomalyDetector:
 
         # Select available features
         available_features = []
-        for col in feature_mapping.keys():
+        for col in feature_mapping:
             if col in df.columns:
                 available_features.append(col)
 
@@ -191,7 +193,7 @@ class MLAnomalyDetector:
         try:
             with open(features_path, 'r') as f:
                 self.feature_columns = json.load(f)
-        except:
+        except Exception:
             self.feature_columns = None
 
         print("✅ Model loaded successfully!")
@@ -207,9 +209,11 @@ class MLAnomalyDetector:
         Returns:
             dict: Prediction result
         """
-        if self.model is None:
-            if not self.load():
-                return None
+        # if self.model is None:
+        # if not self.load():
+        # return None
+        if self.model is None and not self.load():
+            return None
 
         # Extract features based on available columns
         features = []
@@ -235,9 +239,11 @@ class MLAnomalyDetector:
 
     def evaluate(self, data=None):
         """Evaluate model performance with actual labels"""
-        if self.model is None:
-            if not self.load():
-                return
+        # if self.model is None:
+        # if not self.load():
+        # return
+        if self.model is None and not self.load():
+            return
 
         if data is None:
             data = self.load_data()
@@ -342,7 +348,7 @@ def main():
 
             result = detector.predict(sample)
             if result:
-                print(f"\n📊 Result:")
+                print("\n📊 Result:")
                 print(
                     f"  Is Anomaly: {'🚨 YES' if result['is_anomaly'] else '✅ NO'}")
                 print(f"  Anomaly Score: {result['score']:.3f}")

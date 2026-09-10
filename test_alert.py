@@ -2,7 +2,8 @@
 # test_alert.py - Generate a test alert
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+
 from config import ALERTS_DIR
 
 # Create alerts directory if it doesn't exist
@@ -10,7 +11,7 @@ os.makedirs(ALERTS_DIR, exist_ok=True)
 
 # Create a test alert
 test_alert = {
-    'timestamp': datetime.now().isoformat(),
+    'timestamp': datetime.now(timezone.utc).isoformat(),
     'alert': {
         'type': 'TEST_ALERT',
         'severity': 'HIGH',
@@ -26,7 +27,7 @@ test_alert = {
 }
 
 # Save to alerts file
-filename = f"alerts_{datetime.now().strftime('%Y%m%d')}.json"
+filename = f"alerts_{datetime.now(timezone.utc).strftime('%Y%m%d')}.json"
 filepath = os.path.join(ALERTS_DIR, filename)
 
 # Load existing alerts or create new list

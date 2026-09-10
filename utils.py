@@ -3,13 +3,10 @@
 # UTILITY FUNCTIONS
 # ============================================================
 
-import os
 import json
+import os
 import time
-from datetime import datetime
-from web3 import Web3
-import pandas as pd
-import numpy as np
+from datetime import datetime, timezone
 
 
 def create_directories():
@@ -22,12 +19,12 @@ def create_directories():
 
 def get_timestamp():
     """Get current timestamp as string"""
-    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
 
 def get_date_string():
     """Get date string for filenames"""
-    return datetime.now().strftime('%Y%m%d')
+    return datetime.now(timezone.utc).strftime('%Y%m%d')
 
 
 def safe_float(value, default=0.0):
@@ -65,7 +62,7 @@ def wei_to_eth(wei_value, w3):
     """Convert wei to ETH"""
     try:
         return float(w3.from_wei(wei_value, 'ether'))
-    except:
+    except Exception:
         return 0.0
 
 
@@ -73,7 +70,7 @@ def wei_to_gwei(wei_value, w3):
     """Convert wei to Gwei"""
     try:
         return float(w3.from_wei(wei_value, 'gwei'))
-    except:
+    except Exception:
         return 0.0
 
 

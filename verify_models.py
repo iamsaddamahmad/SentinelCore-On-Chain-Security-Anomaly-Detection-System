@@ -1,6 +1,7 @@
 # verify_models.py
-import os
 import json
+import os
+
 import joblib
 
 print("="*60)
@@ -41,20 +42,20 @@ try:
     # 2. Check model stats
     with open('models/model_stats.json', 'r') as f:
         stats = json.load(f)
-    print(f"\n📊 Model Stats:")
+    print("\n📊 Model Stats:")
     print(f"   Training Date: {stats.get('training_date', 'Unknown')}")
     print(f"   Samples: {stats.get('samples', 'Unknown')}")
     print(f"   Contamination: {stats.get('contamination', 'Unknown')}")
 
     # 3. Check model
     model = joblib.load('models/isolation_forest.pkl')
-    print(f"\n🧠 Model Info:")
+    print("\n🧠 Model Info:")
     print(f"   Type: {type(model).__name__}")
     print(f"   Estimators: {model.n_estimators}")
 
     # 4. Check scaler
     scaler = joblib.load('models/scaler.pkl')
-    print(f"\n📊 Scaler Info:")
+    print("\n📊 Scaler Info:")
     print(f"   Type: {type(scaler).__name__}")
     print(
         f"   Features: {scaler.mean_.shape[0] if hasattr(scaler, 'mean_') else 'Unknown'}")

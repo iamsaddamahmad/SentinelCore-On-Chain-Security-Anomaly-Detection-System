@@ -1,7 +1,6 @@
 # test_model.py
+
 from ml_detector import MLAnomalyDetector
-import pandas as pd
-import numpy as np
 
 # Load the trained model
 detector = MLAnomalyDetector()

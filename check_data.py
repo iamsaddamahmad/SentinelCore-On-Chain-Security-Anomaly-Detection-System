@@ -1,6 +1,8 @@
 # check_data.py
-import pandas as pd
 import os
+
+import pandas as pd
+
 from config import DATA_DIR
 
 # Check if file exists
@@ -8,7 +10,7 @@ filepath = os.path.join(DATA_DIR, 'transaction_dataset.csv')
 
 if os.path.exists(filepath):
     df = pd.read_csv(filepath)
-    print(f"✅ Dataset loaded successfully!")
+    print("✅ Dataset loaded successfully!")
     print(f"📊 Shape: {df.shape}")
     print(f"📋 Columns: {list(df.columns)}")
     print("\n" + "="*60)
@@ -24,7 +26,7 @@ if os.path.exists(filepath):
     print(f"   Total Ether Sent: {df['total Ether sent'].sum():.2f}")
     print(f"   Total Ether Received: {df['total ether received'].sum():.2f}")
 
-    print(f"\n📝 First 5 rows:")
+    print("\n📝 First 5 rows:")
     print(df[['Address', 'FLAG', 'Sent tnx',
           'Received Tnx', 'total Ether sent']].head())
 

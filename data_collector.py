@@ -4,12 +4,13 @@
 # Collects transaction data for analysis and ML training
 # ============================================================
 
-from web3 import Web3
-import pandas as pd
-import numpy as np
-import time
 import os
-from datetime import datetime
+import time
+from datetime import datetime, timezone
+
+import pandas as pd
+from web3 import Web3
+
 from config import *
 from utils import *
 
@@ -60,7 +61,7 @@ class DataCollector:
                         tx_data = {
                             'block_number': block_num,
                             'timestamp': block.timestamp,
-                            'block_time': datetime.fromtimestamp(block.timestamp).isoformat(),
+                            'block_time': datetime.fromtimestamp(block.timestamp, timezone.utc).isoformat(),
                             'hash': tx.hash.hex(),
                             'from': tx['from'],
                             'to': tx.get('to', '0x0'),
@@ -76,12 +77,11 @@ class DataCollector:
                         transactions.append(tx_data)
                         self.total_txs += 1
 
-                    except Exception as e:
+                    except Exception:
                         # Skip this transaction on error
                         continue
 
                 # Progress indicator
-                progress = ((i + 1) / (current_block - start_block + 1)) * 100
                 print_progress(i + 1, current_block - start_block + 1,
                                prefix=f'Block {block_num}',
                                suffix=f'| Collected: {len(transactions)} txs')
@@ -102,7 +102,7 @@ class DataCollector:
             print("⚠️ No transactions collected!")
             return df
 
-        print(f"\n📈 Statistics:")
+        print("\n📈 Statistics:")
         print(f"   Total transactions: {len(df)}")
         print(f"   Unique addresses: {df['from'].nunique()}")
         print(f"   Average value: {df['value_eth'].mean():.4f} ETH")
@@ -168,7 +168,7 @@ class DataCollector:
                                    prefix='Scanning blocks',
                                    suffix=f'Found: {len(transactions)} txs')
 
-            except Exception as e:
+            except Exception:
                 continue
 
         timer.stop()
@@ -233,7 +233,7 @@ class DataCollector:
                                    prefix='Scanning',
                                    suffix=f'Found: {len(interactions)} interactions')
 
-            except Exception as e:
+            except Exception:
                 continue
 
         df = pd.DataFrame(interactions)

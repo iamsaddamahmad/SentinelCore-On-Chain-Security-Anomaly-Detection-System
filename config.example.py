@@ -7,7 +7,7 @@
 INFURA_API_KEY = "YOUR_INFURA_API_KEY_HERE"
 
 # Ethereum RPC URL
-RPC_URL = f"https://mainnet.infura.io/v3/{Your_INFURA_API_KEY}"
+RPC_URL = "https://mainnet.infura.io/v3/Your_INFURA_API_KEY"
 
 # ============================================================
 # ADDRESSES TO MONITOR

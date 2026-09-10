@@ -4,15 +4,15 @@
 # Real-time transaction monitoring with rule-based alerts
 # ============================================================
 
-from web3 import Web3
-import time
-import json
 import os
-import sys
-from datetime import datetime
+import time
+from datetime import datetime, timezone
+
+from web3 import Web3
+
 from config import *
-from utils import *
 from ml_detector import MLAnomalyDetector
+from utils import *
 
 
 class SecurityMonitor:
@@ -77,7 +77,7 @@ class SecurityMonitor:
                 'input_length': len(tx['input']),
                 'is_contract': 1 if not tx.get('to') or tx['to'] == '0x0' else 0,
                 'success': 1 if receipt and receipt.get('status') == 1 else 0,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
 
             alerts = []
@@ -142,7 +142,7 @@ class SecurityMonitor:
 
             return alerts, tx_data, ml_result
 
-        except Exception as e:
+        except Exception:
             return [], None, None
 
     def log_alert(self, alert, tx_data, ml_result=None):
@@ -283,7 +283,7 @@ class SecurityMonitor:
 
                     if tx_from == address_lower or tx_to == address_lower:
                         found_txs += 1
-                        alerts, tx_data, _ = self.analyze_transaction(
+                        alerts, _tx_data, _ = self.analyze_transaction(
                             tx, block_num)
 
                         if alerts:
@@ -299,10 +299,10 @@ class SecurityMonitor:
                     print(
                         f"\rProgress: {progress:.0f}% | Found: {found_txs} txs", end="")
 
-            except Exception as e:
+            except Exception:
                 continue
 
-        print(f"\n\n✅ Scan complete!")
+        print("\n\n✅ Scan complete!")
         print(f"Transactions found: {found_txs}")
         print(f"Alerts triggered: {alerts_found}")
 
@@ -348,7 +348,8 @@ def main():
                 print("No alerts found.")
                 continue
 
-            latest = sorted(alert_files)[-1]
+            # latest = sorted(alert_files)[-1]
+            latest = max(alert_files)
             filepath = os.path.join(ALERTS_DIR, latest)
             alerts = load_json(filepath)
 

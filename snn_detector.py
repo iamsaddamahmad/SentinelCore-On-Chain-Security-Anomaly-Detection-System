@@ -4,11 +4,12 @@
 # Compatible with columns: FLAG, Address, Sent tnx, etc.
 # ============================================================
 
-import torch
+import os
+
 import numpy as np
 import pandas as pd
-import os
-import json
+import torch
+
 from config import *
 from utils import *
 
@@ -199,7 +200,8 @@ def main():
                 print("❌ No data files found!")
                 continue
 
-            latest = sorted(data_files)[-1]
+            # latest = sorted(data_files)[-1]
+            latest = max(data_files)
             df = pd.read_csv(os.path.join(DATA_DIR, latest))
             print(f"Loaded {len(df)} records")
 

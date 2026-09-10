@@ -3,12 +3,12 @@
 # MASTER CONTROLLER - Run everything from one place
 # ============================================================
 
-import os
-import sys
-import subprocess
 import json
+import os
+import subprocess
+import sys
 import time
-from datetime import datetime
+
 from config import *
 
 
@@ -32,27 +32,27 @@ def show_menu():
     print("\n" + "="*60)
     print("📋 MAIN MENU")
     print("="*60)
-    print("")
+    print()
     print("   PHASE 1-3: DATA & MONITORING")
     print("   ─────────────────────────────")
     print("   1. 🚀 Run Live Monitor")
     print("   2. 📊 Collect Training Data")
     print("   3. 🔍 Scan Specific Address")
-    print("")
+    print()
     print("   PHASE 4: TRADITIONAL ML")
     print("   ──────────────────────")
     print("   4. 🤖 Train ML Anomaly Detector")
     print("   5. 🧪 Test ML Model")
-    print("")
+    print()
     print("   PHASE 5: SPIKING NEURAL NETWORK (NeuroChain Sentinel)")
     print("   ──────────────────────────────────────────────────────")
     print("   6. 🧠 Build/Train SNN Model")
     print("   7. 🔬 Run SNN Anomaly Detection")
-    print("")
+    print()
     print("   PHASE 6: OCI MULTI-AGENT SYSTEM")
     print("   ──────────────────────────────")
     print("   8. 🤝 Setup OCI Agents")
-    print("")
+    print()
     print("   SYSTEM")
     print("   ──────")
     print("   9. 📋 View Alert Logs")
@@ -68,7 +68,7 @@ def run_script(script_name):
         print("="*50)
         # Use sys.executable to ensure we use the same Python
         result = subprocess.run(
-            [sys.executable, script_name], capture_output=False)
+            [sys.executable, script_name], capture_output=False, check=False)
         return result.returncode == 0
     except FileNotFoundError:
         print(f"❌ File not found: {script_name}")
@@ -82,7 +82,7 @@ def run_script_with_args(script_name, *args):
     """Run a Python script with arguments"""
     try:
         cmd = [sys.executable, script_name] + list(args)
-        result = subprocess.run(cmd, capture_output=False)
+        result = subprocess.run(cmd, capture_output=False, check=False)
         return result.returncode == 0
     except Exception as e:
         print(f"❌ Error running {script_name}: {e}")
@@ -140,9 +140,9 @@ def check_status():
                     with open(os.path.join('alerts', f), 'r') as file:
                         data = json.load(file)
                         total_alerts += len(data)
-                except:
-                    pass
-            print(f"  Total alerts logged: {total_alerts}")
+                except Exception as e:
+                    print(f"⚠️ Could not read alert file: {e}")
+                print(f"  Total alerts logged: {total_alerts}")
             print(f"  Alert files: {len(alert_files)}")
         else:
             print("  No alerts logged")
@@ -243,20 +243,14 @@ except Exception as e:
                 run_script("temp_scan.py")
                 try:
                     os.remove("temp_scan.py")
-                except:
-                    pass
-            input("\nPress Enter to continue...")
+                except Exception as e:
+                    print(f"⚠️ Could not remove temp file: {e}")
+                input("\nPress Enter to continue...")
 
-        elif choice == "4":
+        elif choice == "4" or choice == "5":
             run_script("ml_detector.py")
 
-        elif choice == "5":
-            run_script("ml_detector.py")
-
-        elif choice == "6":
-            run_script("snn_detector.py")
-
-        elif choice == "7":
+        elif choice == "6" or choice == "7":
             run_script("snn_detector.py")
 
         elif choice == "8":
