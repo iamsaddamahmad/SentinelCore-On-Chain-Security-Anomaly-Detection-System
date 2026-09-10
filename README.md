@@ -1,5 +1,8 @@
 # 🔒 SentinelCore: On-Chain Security & Anomaly Detection System
 
+[![Python CI](https://github.com/iamsaddamahmad/SentinelCore-On-Chain-Security-Anomaly-Detection-System/actions/workflows/test.yml/badge.svg)](https://github.com/iamsaddamahmad/SentinelCore-On-Chain-Security-Anomaly-Detection-System/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Real-time transaction monitoring with ML and Spiking Neural Network (SNN) anomaly detection.**
 
 ## 📋 Table of Contents
@@ -88,6 +91,8 @@ onchain-security-sentinel/
 │
 └── 📁 alerts/                   # Alert logs (auto-generated)
     └── alerts_YYYYMMDD.json
+├── 📄 pyproject.toml            # Linting configuration (ruff)
+├── 📁 .github/workflows/        # CI: tests, lint, secret scan
 ```
 
 ---
@@ -192,7 +197,11 @@ onchain-security-sentinel/
 ---
 
 ## 🧪 Testing
+Automated tests run via pytest (also run automatically in CI on every push):
 
+```
+pytest -v
+```
 Run the system's self-tests to verify everything is working:
 
 ```bash
@@ -364,6 +373,7 @@ cat logs/alerts.log
 - [x] Real-time monitoring
 - [x] Alert logging system
 - [x] Master controller menu
+- [x] CI/CD pipeline (GitHub Actions: tests, linting, secret scanning)
 
 ### In Progress 🔄
 - [ ] Real-time alerting (Telegram/Discord integration)
@@ -374,7 +384,6 @@ cat logs/alerts.log
 - [ ] Full BindsNET integration for production SNN
 - [ ] Web dashboard (React/Streamlit)
 - [ ] Docker deployment
-- [ ] CI/CD pipeline
 
 ---
 
@@ -386,6 +395,7 @@ cat logs/alerts.log
 - **Model isolation** — Trained models are stored locally and can be version-controlled.
 - **Log rotation** — Alerts are stored with date stamps to prevent log file bloat.
 - **Error handling** — Graceful handling of network failures, missing data, and malformed transactions.
+- **Automated CI security scanning** — every push is scanned for accidentally committed secrets/credentials (TruffleHog) and linted for common bug patterns (ruff), in addition to running the full test suite
 
 ### Limitations (By Design)
 
