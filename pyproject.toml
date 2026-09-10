@@ -4,3 +4,6 @@ ignore = ["BLE001"]
 [tool.ruff.lint.per-file-ignores]
 "data_collector.py" = ["S112"]
 "monitor.py" = ["S112"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "utils", "ml_detector", "snn_detector", "data_collector", "monitor"]
