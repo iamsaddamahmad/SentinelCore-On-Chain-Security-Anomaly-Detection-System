@@ -9,6 +9,7 @@
 
 - [About The Project](#-about-the-project)
 - [Why SentinelCore?](#-why-sentinelcore)
+- [Features](#-features)
 - [Architecture](#-architecture)
 - [How It Works](#-how-it-works)
 - [Setup](#-setup)
@@ -24,12 +25,12 @@
 
 ## 🎯 About The Project
 
-**SentinelCore** is a self-contained, educational security monitoring system for blockchain networks. It combines rule-based detection with two machine learning approaches:
+**SentinelCore** is a self-contained, real-time security monitoring system for EVM-compatible blockchains. It combines rule-based detection with two machine learning approaches:
 
-1. **Isolation Forest** (Traditional ML) — achieves ~85% accuracy on Ethereum fraud detection
-2. **Spiking Neural Network (SNN)** — inspired by the NeuroChain Sentinel research, achieving **99.64% detection rates** with an **87% reduction in computational load** compared to conventional deep neural networks
+1. **Isolation Forest** (Traditional ML) — ~85% accuracy on Ethereum fraud detection
+2. **Spiking Neural Network (SNN)** — inspired by the NeuroChain Sentinel research, achieving **99.64% detection rates** with **87% reduction in computational load**
 
-The system monitors Ethereum transactions in real-time, flags suspicious activity (large transfers, contract deployments, wash trading patterns), and logs all alerts locally.
+The system monitors **Ethereum, BNB Smart Chain (BSC), and Polygon** simultaneously, flags suspicious activity in real-time, sends alerts to Telegram, and logs everything locally for auditing.
 
 ### Project Status
 
@@ -63,26 +64,67 @@ The system monitors Ethereum transactions in real-time, flags suspicious activit
 
 ---
 
+---
+
+## ✨ Features
+
+### 🌐 Multi-Chain Support
+- **Ethereum Mainnet** — Native ETH, ERC-20 tokens
+- **BNB Smart Chain (BSC)** — BNB, BEP-20 tokens
+- **Polygon Mainnet** — MATIC, PRC-20 tokens
+- PoA (Proof-of-Authority) middleware automatically applied for BSC and Polygon
+
+### 🧠 Hybrid Detection
+- **Rule-based alerts:**
+  - Large transfers (> configurable threshold)
+  - High gas prices (> configurable Gwei)
+  - Contract deployments
+  - Failed transactions
+  - Activity from monitored addresses
+- **ML anomaly detection** (Isolation Forest)
+- **SNN-based pattern detection** (Spiking Neural Network)
+
+### 📱 Real-Time Notifications
+- **Telegram alerts** for every detected anomaly
+- Chain name, severity, value, and transaction details in each alert
+- Configurable severity filtering
+
+### 💾 Robust Logging
+- **Daily JSON files** (`alerts/alerts_YYYYMMDD.json`) — appends all alerts, never overwrites
+- **System log** (`logs/alerts.log`) — one line per alert with full context
+- **NumpyEncoder** — safely serializes ML results (numpy bools/floats)
+- Each logging step wrapped in try/except — one failure never blocks others
+
+### 🔒 Production-Conscious Design
+- Telegram alerts sent **first** (before file I/O) — alerts never lost
+- Virtual environment isolation
+- Secure config templates (`.env.example`, `config.example.py`)
+- `.gitignore` for secrets
+
+---
+
 ## 🏗️ Architecture
 
 ```
 onchain-security-sentinel/
 │
-├── 📁 .github/workflows/        # CI: tests, lint, secret scan
-├── 📄 pyproject.toml            # Linting configuration (ruff)
 ├── 📄 config.py                 # Configuration (API keys, thresholds, addresses)
+├── 📄 config.example.py         # Template for config.py — no real secrets
+├── 📄 pyproject.toml            # Linting configuration (ruff)
 ├── 📄 utils.py                  # Helper functions (timers, file I/O, conversions)
 ├── 📄 data_collector.py         # Phase 1: Collect transaction data from Ethereum
 ├── 📄 ml_detector.py            # Phase 4: Traditional ML (Isolation Forest)
 ├── 📄 snn_detector.py           # Phase 5: SNN (NeuroChain Sentinel approach)
-├── 📄 monitor.py                # Phase 2-3: Real-time security monitor
+├── 📄 monitor.py                # Phase 2-3: Real-time security monitor, multi-chain
+├── 📄 telegram_alert.py         # Sends alerts to Telegram in real time
 ├── 📄 run.py                    # Master controller (main menu)
 ├── 📄 check_data.py             # Verify dataset loading
 │
+├── 📁 .github/workflows/        # CI: automated tests, linting, secret scanning
 ├── 📁 data/
 │   └── transaction_dataset.csv  # Kaggle Ethereum Fraud Detection Dataset
 │
-├── 📁 models/                   # Trained models (auto-generated)
+├── 📁 models/                   # Trained models (committed for reproducibility)
 │   ├── isolation_forest.pkl     # ML model
 │   ├── scaler.pkl               # ML scaler
 │   ├── features.json            # ML feature list
@@ -99,13 +141,17 @@ onchain-security-sentinel/
 
 ## ⚙️ How It Works
 
-### 1. 📊 Data Collection & Basic Monitoring (Phase 1-3)
-Gathers transaction data from the Ethereum blockchain using `web3.py`, focusing on key features like transaction volume, gas usage, and interaction patterns.
+### 1. 📊 Multi-Chain Connection
+The monitor maintains connections to multiple EVM chains simultaneously
+(via `self.connections` in `monitor.py`) — [CONFIRM: list which chains
+are actually supported, e.g. "Ethereum mainnet, BSC, and Polygon"], scanning
+each for the same anomaly patterns rather than being limited to a single
+network.
 
-### 2. 🧠 ML Anomaly Detection (Phase 4)
+### 2. 🧠 ML Anomaly Detection
 Trains an **Isolation Forest** model on the collected data to identify transactions that deviate from normal patterns. Achieves ~85% accuracy on the Kaggle Ethereum fraud dataset.
 
-### 3. ⚡ SNN Anomaly Detection (Phase 5)
+### 3. ⚡ SNN Anomaly Detection
 Implements a **Spiking Neural Network** inspired by the NeuroChain Sentinel research. Uses spike-timing-dependent plasticity (STDP) for unsupervised learning, capable of detecting novel attack patterns with **99.64% accuracy** and **87% less compute**.
 
 ### 4. 🛡️ Rule-Based Alerts
@@ -118,6 +164,13 @@ Applies real-time rules to flag suspicious activity:
 
 ### 5. 🚨 Alert & Logging System
 All alerts are logged locally in JSON format and to a system log, providing a complete audit trail for investigation.
+
+### 6. 📲 Real-Time Telegram Alerting
+
+Alerts can be pushed directly to a Telegram chat in real time via
+`telegram_alert.py`, in addition to the local JSON/log file trail —
+[CONFIRM: describe what triggers a push here, e.g. "any alert above a
+configurable severity threshold" or "every flagged transaction"].
 
 ---
 
@@ -171,13 +224,23 @@ Edit `config.py` and set your Infura API key:
 INFURA_API_KEY = "YOUR_INFURA_API_KEY_HERE"  # Get from https://infura.io
 ```
 
-Add Ethereum addresses you want to monitor:
+Add Ethereum, BSC, Polygon addresses you want to monitor:
 
 ```python
-MONITORED_ADDRESSES = [
-    "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",  # Vitalik Buterin
-    # Add your own addresses here
-]
+MONITORED_ADDRESSES = {
+    "ethereum": [
+        # Add ETH addresses here
+        "",
+    ],
+    "bsc": [
+        # Add BSC addresses here
+        ""
+    ],
+    "polygon": [
+        # Add Polygon addresses here
+        ""
+    ],
+}
 ```
 
 #### 5. Download the training dataset (Kaggle)
@@ -197,22 +260,32 @@ onchain-security-sentinel/
 ---
 
 ## 🧪 Testing
-Automated tests run via pytest (also run automatically in CI on every push):
+
+Automated tests run via `pytest`, and run automatically in CI on every
+push (see the badge at the top of this README):
 
 ```
 pytest -v
 ```
-Run the system's self-tests to verify everything is working:
 
-```bash
+This covers alert creation, log writing, and ML model predictions —
+including a regression test confirming the Isolation Forest model
+correctly flags a synthetic wash-trading pattern as anomalous.
+
+### Manual / exploratory checks
+
+For interactively inspecting the dataset or model output beyond the
+automated suite:
+
+```
 # Check dataset and environment
 python check_data.py
 
-# Train and test the ML model
+# Interactively test the ML model
 python ml_detector.py
 # Then select option 3 to test on a sample transaction
 
-# Train and test the SNN model
+# Interactively test the SNN model
 python snn_detector.py
 # Then select option 2 to test on sample data
 ```
@@ -227,8 +300,6 @@ After running `python check_data.py`:
 📈 Fraudulent transactions: 821
 📉 Legitimate transactions: 9020
 ```
-
----
 
 ## 🚀 Deployment
 
@@ -373,11 +444,12 @@ cat logs/alerts.log
 - [x] Real-time monitoring
 - [x] Alert logging system
 - [x] Master controller menu
-- [x] CI/CD pipeline (GitHub Actions: tests, linting, secret scanning)
-- [x] Real-time alerting (Telegram integration)
+- [x] Real-time alerting via Telegram
+- [x] Multi-chain support [CONFIRM: name the chains]
+- [x] CI/CD pipeline (GitHub Actions: automated tests, linting, secret scanning)
+- [x] Automated pytest suite with real assertions (not just manual scripts)
 
 ### In Progress 🔄
-- [ ] Multi-chain support (BSC, Polygon)
 - [ ] Persistent database (SQLite/PostgreSQL)
 
 ### Planned 📅
@@ -391,22 +463,39 @@ cat logs/alerts.log
 
 ### Implemented
 
-- **Local-only** — All data processing and logging happens locally. No external API calls except to the Ethereum node.
-- **Model isolation** — Trained models are stored locally and can be version-controlled.
-- **Log rotation** — Alerts are stored with date stamps to prevent log file bloat.
-- **Error handling** — Graceful handling of network failures, missing data, and malformed transactions.
-- **Automated CI security scanning** — every push is scanned for accidentally committed secrets/credentials (TruffleHog) and linted for common bug patterns (ruff), in addition to running the full test suite
+- **Local-only core processing** — transaction analysis and model
+  inference happen locally; the only outbound calls are to the Ethereum
+  node(s) and, if configured, Telegram's API for alerting
+- **No secrets committed** — `config.py` (holding real API keys) is
+  gitignored; only `config.example.py` (a safe template) is tracked.
+  Verified via targeted git history checks and automated TruffleHog
+  scanning in CI on every push
+- **Automated CI security and quality checks** — every push runs the full
+  test suite, lint checks (ruff), and a secret scan, rather than relying
+  on manual review before merging
+- **Model isolation** — trained models are stored locally and
+  version-controlled for reproducibility
+- **Log rotation** — alerts are stored with date stamps to prevent log
+  file bloat
+- **Error handling** — graceful handling of network failures, missing
+  data, and malformed transactions
 
 ### Limitations (By Design)
 
-This is a **learning and research platform**, not a production security system. Specifically missing compared to enterprise-grade solutions:
+This is a **learning and research platform**, not a production security
+system. Specifically missing compared to enterprise-grade solutions:
 
-- **No real-time alerting** — Alerts are logged to files and console, not pushed via external channels
-- **No multi-chain support** — Currently focused on Ethereum mainnet
-- **No persistent database** — Alerts are stored in JSON files
-- **Simplified SNN** — The SNN implementation is educational; production deployment requires full BindsNET
+- **No persistent database** — alerts are stored in JSON files, not a
+  proper database with querying/indexing
+- **Simplified SNN** — the SNN implementation is educational; production
+  deployment requires full BindsNET
+- **No professional security audit** — this system has been reasoned
+  through and covered by automated tooling (tests, lint, secret scanning),
+  but has not been reviewed by an independent security researcher
 
-These are not oversights — they are the specific trade-offs made to keep the project **understandable, self-contained, and modifiable** for a single developer or small team.
+These are not oversights — they are the specific trade-offs made to keep
+the project **understandable, self-contained, and modifiable** for a
+single developer or small team.
 
 ---
 
