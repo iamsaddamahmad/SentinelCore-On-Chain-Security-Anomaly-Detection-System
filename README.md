@@ -64,8 +64,6 @@ The system monitors **Ethereum, BNB Smart Chain (BSC), and Polygon** simultaneou
 
 ---
 
----
-
 ## ✨ Features
 
 ### 🌐 Multi-Chain Support
@@ -300,6 +298,7 @@ After running `python check_data.py`:
 📈 Fraudulent transactions: 821
 📉 Legitimate transactions: 9020
 ```
+---
 
 ## 🚀 Deployment
 
