@@ -231,10 +231,12 @@ class MLAnomalyDetector:
         score = self.model.score_samples(X_scaled)[0]
 
         return {
-            'is_anomaly': prediction == -1,
+            # ← cast to Python bool
+            'is_anomaly': bool(prediction == -1),
             'score': float(score),
             'confidence': float(1 / (1 + np.exp(-abs(score)))),
-            'features': dict(zip(self.feature_columns, features))
+            # ← cast to float
+            'features': {k: float(v) for k, v in zip(self.feature_columns, features)}
         }
 
     def evaluate(self, data=None):

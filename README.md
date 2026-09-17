@@ -68,6 +68,8 @@ The system monitors Ethereum transactions in real-time, flags suspicious activit
 ```
 onchain-security-sentinel/
 │
+├── 📁 .github/workflows/        # CI: tests, lint, secret scan
+├── 📄 pyproject.toml            # Linting configuration (ruff)
 ├── 📄 config.py                 # Configuration (API keys, thresholds, addresses)
 ├── 📄 utils.py                  # Helper functions (timers, file I/O, conversions)
 ├── 📄 data_collector.py         # Phase 1: Collect transaction data from Ethereum
@@ -91,15 +93,13 @@ onchain-security-sentinel/
 │
 └── 📁 alerts/                   # Alert logs (auto-generated)
     └── alerts_YYYYMMDD.json
-├── 📄 pyproject.toml            # Linting configuration (ruff)
-├── 📁 .github/workflows/        # CI: tests, lint, secret scan
 ```
 
 ---
 
 ## ⚙️ How It Works
 
-### 1. 📊 Data Collection
+### 1. 📊 Data Collection & Basic Monitoring (Phase 1-3)
 Gathers transaction data from the Ethereum blockchain using `web3.py`, focusing on key features like transaction volume, gas usage, and interaction patterns.
 
 ### 2. 🧠 ML Anomaly Detection (Phase 4)
@@ -374,9 +374,9 @@ cat logs/alerts.log
 - [x] Alert logging system
 - [x] Master controller menu
 - [x] CI/CD pipeline (GitHub Actions: tests, linting, secret scanning)
+- [x] Real-time alerting (Telegram integration)
 
 ### In Progress 🔄
-- [ ] Real-time alerting (Telegram/Discord integration)
 - [ ] Multi-chain support (BSC, Polygon)
 - [ ] Persistent database (SQLite/PostgreSQL)
 

@@ -8,6 +8,26 @@ import os
 import time
 from datetime import datetime, timezone
 
+import numpy as np
+
+
+# ============================================================
+# JSON ENCODER (handles numpy types safely)
+# ============================================================
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder for numpy types (bool, int, float, ndarray)"""
+
+    def default(self, obj):
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
 
 def create_directories():
     """Create all required directories"""
@@ -46,16 +66,16 @@ def safe_int(value, default=0):
 def load_json(filepath):
     """Load JSON file safely"""
     try:
-        with open(filepath, 'r') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
 
 def save_json(data, filepath):
-    """Save JSON file safely"""
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=2)
+    """Save JSON file safely, handling numpy types"""
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, cls=NumpyEncoder)
 
 
 def wei_to_eth(wei_value, w3):
