@@ -4,16 +4,16 @@
 # Collects transaction data for each chain separately
 # ============================================================
 
+import argparse
 import os
 import time
-import argparse
 from datetime import datetime, timezone
 
 import pandas as pd
 from web3 import Web3
 
 from config import CHAINS, DATA_DIR
-from utils import create_directories, print_progress, Timer
+from utils import Timer, create_directories, print_progress
 
 
 class DataCollector:
@@ -124,7 +124,7 @@ class DataCollector:
         print(f"   Success rate: {(df['success'].sum() / len(df) * 100):.1f}%")
 
         if save:
-            date_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            date_str = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
             filename = f"transactions_{self.chain_key}_{date_str}_{len(df)}.csv"
             filepath = os.path.join(DATA_DIR, filename)
             df.to_csv(filepath, index=False)

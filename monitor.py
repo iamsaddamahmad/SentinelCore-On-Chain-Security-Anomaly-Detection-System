@@ -11,10 +11,15 @@ from datetime import datetime, timezone
 from web3 import Web3
 
 from config import (
-    CHAINS, MONITORED_ADDRESSES,
-    LARGE_TRANSFER_THRESHOLD, HIGH_GAS_THRESHOLD,
-    BLOCKS_TO_SCAN, LIVE_CHECK_INTERVAL,
-    ALERTS_DIR, LOGS_DIR, SEND_TEST_ALERT_ON_STARTUP,
+    ALERTS_DIR,
+    BLOCKS_TO_SCAN,
+    CHAINS,
+    HIGH_GAS_THRESHOLD,
+    LARGE_TRANSFER_THRESHOLD,
+    LIVE_CHECK_INTERVAL,
+    LOGS_DIR,
+    MONITORED_ADDRESSES,
+    SEND_TEST_ALERT_ON_STARTUP,
 )
 from ml_detector import MLAnomalyDetector
 from telegram_alert import TelegramAlert
@@ -98,7 +103,7 @@ class SecurityMonitor:
         # Initialize per-chain ML detectors
         print("\n🧠 Initializing per-chain ML detectors...")
         self.ml_detectors = {}
-        for chain_key in self.connections.keys():
+        for chain_key in self.connections:
             detector = MLAnomalyDetector(chain_key=chain_key)
             if detector.load():
                 self.ml_detectors[chain_key] = detector

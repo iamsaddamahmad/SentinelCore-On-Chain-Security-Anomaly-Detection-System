@@ -4,26 +4,26 @@
 # Trains a separate Isolation Forest for each chain
 # ============================================================
 
-import os
-import json
 import argparse
+import json
+import os
+from typing import ClassVar
 
+import joblib
 import numpy as np
 import pandas as pd
-import joblib
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-from config import DATA_DIR, MODELS_DIR, CHAINS
-from utils import create_directories, get_timestamp, load_json, save_json
+from config import CHAINS, DATA_DIR, MODELS_DIR
+from utils import create_directories, get_timestamp, save_json
 
 
 class MLAnomalyDetector:
     """Per-chain ML anomaly detector using Isolation Forest"""
 
     # Features the model learns from — behavioral, chain-agnostic
-    FEATURE_COLUMNS = [
+    FEATURE_COLUMNS: ClassVar[list[str]] = [
         "value_eth",
         "gas_price_gwei",
         "gas",
@@ -66,7 +66,7 @@ class MLAnomalyDetector:
             print(f"   Run: python data_collector.py --chain {self.chain_key}")
             return None
 
-        latest = sorted(csv_files)[-1]
+        latest = max(csv_files)
         print(f"📂 Loading latest for {self.chain_key}: {latest}")
         return pd.read_csv(os.path.join(DATA_DIR, latest))
 
@@ -98,7 +98,7 @@ class MLAnomalyDetector:
 
         X = self.prepare_features(data)
         if X is None or len(X) < 50:
-            print(f"❌ Not enough data to train (need at least 50 rows)")
+            print("❌ Not enough data to train (need at least 50 rows)")
             return False
 
         print(f"Training samples: {len(X)}")
@@ -292,16 +292,15 @@ def main():
         elif choice == "2":
             if detector.load():
                 detector.evaluate()
-        elif choice == "3":
-            if detector.load():
-                sample = {
-                    "value_eth": 1000.0, "gas_price_gwei": 500.0,
-                    "gas": 100000, "gas_used": 80000,
-                    "input_length": 1000, "is_contract": 0, "success": 1,
-                }
-                result = detector.predict(sample)
-                print(f"\n📊 Result: anomaly={result['is_anomaly']}, "
-                      f"score={result['score']:.3f}")
+        elif choice == "3" and detector.load():
+            sample = {
+                "value_eth": 1000.0, "gas_price_gwei": 500.0,
+                "gas": 100000, "gas_used": 80000,
+                "input_length": 1000, "is_contract": 0, "success": 1,
+            }
+            result = detector.predict(sample)
+            print(f"\n📊 Result: anomaly={result['is_anomaly']}, "
+                  f"score={result['score']:.3f}")
 
 
 if __name__ == "__main__":
