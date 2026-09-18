@@ -71,6 +71,24 @@ HIGH_GAS_THRESHOLD_GWEI = 200           # Alert on gas > 200 Gwei
 MAX_ANOMALY_SCORE = 0.8                 # ML anomaly threshold
 
 # ============================================================
+# PER-CHAIN ALERT THRESHOLDS
+# ============================================================
+# Each chain has different native token values, gas behavior,
+# and typical transaction sizes. Tune separately.
+
+LARGE_TRANSFER_THRESHOLD = {
+    "ethereum": 100,      # 100 ETH
+    "bsc": 50,            # 50 BNB
+    "polygon": 10000,     # 10,000 MATIC
+}
+
+HIGH_GAS_THRESHOLD = {
+    "ethereum": 200,      # 200 Gwei
+    "bsc": 50,            # 50 Gwei (BSC gas is cheaper)
+    "polygon": 500,       # 500 Gwei (Polygon gas spikes often)
+}
+
+# ============================================================
 # DIRECTORIES
 # ============================================================
 DATA_DIR = "data"

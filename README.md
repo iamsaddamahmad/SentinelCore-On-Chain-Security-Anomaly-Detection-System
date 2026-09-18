@@ -73,14 +73,9 @@ The system monitors **Ethereum, BNB Smart Chain (BSC), and Polygon** simultaneou
 - PoA (Proof-of-Authority) middleware automatically applied for BSC and Polygon
 
 ### 🧠 Hybrid Detection
-- **Rule-based alerts:**
-  - Large transfers (> configurable threshold)
-  - High gas prices (> configurable Gwei)
-  - Contract deployments
-  - Failed transactions
-  - Activity from monitored addresses
-- **ML anomaly detection** (Isolation Forest)
-- **SNN-based pattern detection** (Spiking Neural Network)
+- **Rule-based** — per-chain thresholds for large transfers, high gas, contract deployments
+- **Per-chain ML (Isolation Forest)** — each chain has its own trained model on chain-specific transaction patterns
+- **SNN** — spike-based pattern recognition for advanced attacks (Ethereum-trained)
 
 ### 📱 Real-Time Notifications
 - **Telegram alerts** for every detected anomaly
@@ -123,11 +118,19 @@ onchain-security-sentinel/
 │   └── transaction_dataset.csv  # Kaggle Ethereum Fraud Detection Dataset
 │
 ├── 📁 models/                   # Trained models (committed for reproducibility)
-│   ├── isolation_forest.pkl     # ML model
-│   ├── scaler.pkl               # ML scaler
-│   ├── features.json            # ML feature list
-│   └── model_stats.json         # ML statistics
-│
+│   ├── isolation_forest_ethereum.pkl
+│   ├── scaler_ethereum.pkl
+│   ├── features_ethereum.json
+│   ├── model_stats_ethereum.json
+|   ├── isolation_forest_bsc.pkl
+|   ├── scaler_bsc.pkl
+|   ├── features_bsc.json
+|   ├── model_stats_bsc.json
+|   ├── isolation_forest_polygon.pkl
+|   ├── scaler_polygon.pkl
+|   ├── features_polygon.json
+|   └── model_stats_polygon.json
+|
 ├── 📁 logs/                     # System logs (auto-generated)
 │   └── alerts.log
 │
@@ -163,7 +166,25 @@ Applies real-time rules to flag suspicious activity:
 ### 5. 🚨 Alert & Logging System
 All alerts are logged locally in JSON format and to a system log, providing a complete audit trail for investigation.
 
-### 6. 📲 Real-Time Telegram Alerting
+### 6. ⚡ Per-Chain Alert Thresholds
+Each chain has different gas behavior, native token values, and typical transaction sizes. SentinelCore uses **per-chain thresholds** so alerts stay meaningful across Ethereum, BSC, and Polygon.
+
+```python
+# config.py
+LARGE_TRANSFER_THRESHOLD = {
+    "ethereum": 100,      # 100 ETH
+    "bsc": 50,            # 50 BNB
+    "polygon": 10000,     # 10,000 MATIC
+}
+
+HIGH_GAS_THRESHOLD = {
+    "ethereum": 200,      # 200 Gwei
+    "bsc": 50,            # 50 Gwei
+    "polygon": 500,       # 500 Gwei
+}
+
+```
+### 7. 📲 Real-Time Telegram Alerting
 
 Alerts can be pushed directly to a Telegram chat in real time via
 `telegram_alert.py`, in addition to the local JSON/log file trail —
@@ -257,6 +278,22 @@ onchain-security-sentinel/
 
 ---
 
+## 🧠 Regenerating ML Models
+
+The trained model files (`*.pkl`) are **not committed to the repository** — they're binary and regenerable. To create them:
+
+```bash
+# 1. Collect training data for each chain
+python data_collector.py --chain ethereum --blocks 200
+python data_collector.py --chain bsc --blocks 200
+python data_collector.py --chain polygon --blocks 200
+
+# 2. Train each chain's model
+python ml_detector.py --chain ethereum --train
+python ml_detector.py --chain bsc --train
+python ml_detector.py --chain polygon --train
+
+```
 ## 🧪 Testing
 
 Automated tests run via `pytest`, and run automatically in CI on every
@@ -447,6 +484,10 @@ cat logs/alerts.log
 - [x] Multi-chain support [CONFIRM: name the chains]
 - [x] CI/CD pipeline (GitHub Actions: automated tests, linting, secret scanning)
 - [x] Automated pytest suite with real assertions (not just manual scripts)
+- [x] PoA middleware for BSC/Polygon
+- [x] Per-chain alert thresholds
+- [x] Per-chain ML models (Ethereum, BSC, Polygon)
+- [x] Behavioral ML features (value, gas, contract, success)
 
 ### In Progress 🔄
 - [ ] Persistent database (SQLite/PostgreSQL)

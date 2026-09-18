@@ -1,124 +1,95 @@
 # ml_detector.py
 # ============================================================
-# UPDATED: ML Anomaly Detector for Ethereum Fraud Dataset
-# Compatible with the Kaggle dataset (columns: FLAG, Address, etc.)
+# PHASE 4: TRADITIONAL ML ANOMALY DETECTION (Per-Chain)
+# Trains a separate Isolation Forest for each chain
 # ============================================================
 
-import json
 import os
+import json
+import argparse
 
-import joblib
 import numpy as np
 import pandas as pd
+import joblib
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-from config import *
-from utils import *
+from config import DATA_DIR, MODELS_DIR, CHAINS
+from utils import create_directories, get_timestamp, load_json, save_json
 
 
 class MLAnomalyDetector:
-    """ML-based anomaly detector for Ethereum transactions"""
+    """Per-chain ML anomaly detector using Isolation Forest"""
 
-    def __init__(self):
+    # Features the model learns from — behavioral, chain-agnostic
+    FEATURE_COLUMNS = [
+        "value_eth",
+        "gas_price_gwei",
+        "gas",
+        "gas_used",
+        "input_length",
+        "is_contract",
+        "success",
+    ]
+
+    def __init__(self, chain_key="ethereum"):
+        self.chain_key = chain_key
         self.model = None
         self.scaler = StandardScaler()
-        self.feature_columns = None
+        self.feature_columns = self.FEATURE_COLUMNS
         self.model_stats = {}
         create_directories()
 
+    # ------------------------------------------------------------
+    # DATA LOADING
+    # ------------------------------------------------------------
     def load_data(self, filename=None):
-        """Load transaction data from CSV"""
+        """Load the most recent CSV for this chain"""
         if filename:
             filepath = os.path.join(DATA_DIR, filename)
             if os.path.exists(filepath):
                 print(f"📂 Loading: {filename}")
                 return pd.read_csv(filepath)
-
-        # Find most recent data file
-        csv_files = [f for f in os.listdir(DATA_DIR) if f.endswith('.csv')]
-
-        if not csv_files:
-            print("❌ No data files found! Run data_collector.py first.")
+            print(f"❌ File not found: {filename}")
             return None
 
-        # latest_file = sorted(csv_files)[-1]
-        latest_file = max(csv_files)
-        filepath = os.path.join(DATA_DIR, latest_file)
-        print(f"📂 Loading latest: {latest_file}")
-        return pd.read_csv(filepath)
-
-    def prepare_features(self, df):
-        """
-        Prepare features for ML training
-        Using the Kaggle Ethereum Fraud Detection Dataset columns
-        """
-        # Feature columns available in this dataset
-        feature_mapping = {
-            'Sent tnx': 'sent_transactions',
-            'Received Tnx': 'received_transactions',
-            'Number of Created Contracts': 'created_contracts',
-            'Unique Received From Addresses': 'unique_received_from',
-            'Unique Sent To Addresses': 'unique_sent_to',
-            'min value received': 'min_value_received',
-            'max value received ': 'max_value_received',
-            'avg val received': 'avg_value_received',
-            'min val sent': 'min_value_sent',
-            'max val sent': 'max_value_sent',
-            'avg val sent': 'avg_value_sent',
-            'total transactions (including tnx to create contract': 'total_transactions',
-            'total Ether sent': 'total_ether_sent',
-            'total ether received': 'total_ether_received',
-            'total ether balance': 'total_ether_balance'
-        }
-
-        # Select available features
-        available_features = []
-        for col in feature_mapping:
-            if col in df.columns:
-                available_features.append(col)
-
-        if not available_features:
-            print("❌ No feature columns found!")
-            print(f"Available columns in dataset: {list(df.columns)}")
-            return None
-
-        # Also add ERC20 features if available
-        erc20_features = [
-            ' Total ERC20 tnxs',
-            ' ERC20 total Ether received',
-            ' ERC20 total ether sent',
-            ' ERC20 min val rec',
-            ' ERC20 max val rec',
-            ' ERC20 avg val rec'
+        # Find most recent file for this chain
+        pattern = f"transactions_{self.chain_key}_"
+        csv_files = [
+            f for f in os.listdir(DATA_DIR)
+            if f.startswith(pattern) and f.endswith(".csv")
         ]
 
-        for col in erc20_features:
-            if col in df.columns:
-                available_features.append(col)
+        if not csv_files:
+            print(f"❌ No data files found for '{self.chain_key}'")
+            print(f"   Run: python data_collector.py --chain {self.chain_key}")
+            return None
 
-        print(f"✅ Using {len(available_features)} features")
-        self.feature_columns = available_features
+        latest = sorted(csv_files)[-1]
+        print(f"📂 Loading latest for {self.chain_key}: {latest}")
+        return pd.read_csv(os.path.join(DATA_DIR, latest))
 
-        # Extract features
-        X = df[available_features].fillna(0)
+    # ------------------------------------------------------------
+    # FEATURE PREPARATION
+    # ------------------------------------------------------------
+    def prepare_features(self, df):
+        available = [c for c in self.feature_columns if c in df.columns]
+        if not available:
+            print(
+                f"❌ No matching features found. DataFrame has: {list(df.columns)}")
+            return None
 
-        # Handle infinite values
-        X = X.replace([np.inf, -np.inf], 0)
-
+        print(f"✅ Using features: {available}")
+        X = df[available].fillna(0).replace([np.inf, -np.inf], 0)
         return X
 
-    def train(self, data=None, contamination=0.05):
-        """
-        Train the Isolation Forest model
-
-        Args:
-            data: DataFrame with transaction data
-            contamination: Expected proportion of anomalies (fraud rate ~5%)
-        """
-        print("🧠 Training Isolation Forest model...")
-        print("   Using Kaggle Ethereum Fraud Detection Dataset")
+    # ------------------------------------------------------------
+    # TRAINING
+    # ------------------------------------------------------------
+    def train(self, data=None, contamination=0.01):
+        """Train Isolation Forest for this chain"""
+        print(f"\n🧠 Training ML model for '{self.chain_key}'...")
 
         if data is None:
             data = self.load_data()
@@ -126,124 +97,106 @@ class MLAnomalyDetector:
                 return False
 
         X = self.prepare_features(data)
-        if X is None:
+        if X is None or len(X) < 50:
+            print(f"❌ Not enough data to train (need at least 50 rows)")
             return False
 
-        print(f"Training data shape: {X.shape}")
+        print(f"Training samples: {len(X)}")
         print(f"Features: {list(X.columns)}")
 
-        # Scale features
-        print("📊 Scaling features...")
+        # Scale
         X_scaled = self.scaler.fit_transform(X)
 
-        # Train model
-        print("🌲 Training Isolation Forest...")
+        # Train
         self.model = IsolationForest(
             contamination=contamination,
             random_state=42,
             n_estimators=100,
-            max_samples='auto',
-            bootstrap=False
+            bootstrap=False,
         )
         self.model.fit(X_scaled)
 
-        # Save model
-        model_path = os.path.join(MODELS_DIR, 'isolation_forest.pkl')
-        scaler_path = os.path.join(MODELS_DIR, 'scaler.pkl')
-        features_path = os.path.join(MODELS_DIR, 'features.json')
+        # Save with chain-specific names
+        model_path = os.path.join(
+            MODELS_DIR, f"isolation_forest_{self.chain_key}.pkl")
+        scaler_path = os.path.join(MODELS_DIR, f"scaler_{self.chain_key}.pkl")
+        features_path = os.path.join(
+            MODELS_DIR, f"features_{self.chain_key}.json")
 
         joblib.dump(self.model, model_path)
         joblib.dump(self.scaler, scaler_path)
-
-        with open(features_path, 'w') as f:
+        with open(features_path, "w") as f:
             json.dump(self.feature_columns, f)
 
-        # Save stats
+        # Stats
         self.model_stats = {
-            'training_date': get_timestamp(),
-            'samples': len(X),
-            'features': self.feature_columns,
-            'contamination': contamination
+            "chain": self.chain_key,
+            "training_date": get_timestamp(),
+            "samples": len(X),
+            "features": self.feature_columns,
+            "contamination": contamination,
         }
+        save_json(self.model_stats,
+                  os.path.join(MODELS_DIR, f"model_stats_{self.chain_key}.json"))
 
-        stats_path = os.path.join(MODELS_DIR, 'model_stats.json')
-        save_json(self.model_stats, stats_path)
+        print(f"✅ Model saved: {model_path}")
+        print(f"✅ Scaler saved: {scaler_path}")
 
-        print(f"✅ Model saved to: {model_path}")
-        print(f"✅ Scaler saved to: {scaler_path}")
-
-        # Evaluate on training data
         self.evaluate(data)
-
         return True
 
+    # ------------------------------------------------------------
+    # LOADING
+    # ------------------------------------------------------------
     def load(self):
-        """Load trained model"""
-        model_path = os.path.join(MODELS_DIR, 'isolation_forest.pkl')
-        scaler_path = os.path.join(MODELS_DIR, 'scaler.pkl')
-        features_path = os.path.join(MODELS_DIR, 'features.json')
+        """Load trained model for this chain"""
+        model_path = os.path.join(
+            MODELS_DIR, f"isolation_forest_{self.chain_key}.pkl")
+        scaler_path = os.path.join(MODELS_DIR, f"scaler_{self.chain_key}.pkl")
 
         if not os.path.exists(model_path):
-            print("❌ Model not found! Train first.")
+            print(f"❌ Model not found for '{self.chain_key}'. Train it first.")
             return False
 
         self.model = joblib.load(model_path)
         self.scaler = joblib.load(scaler_path)
-
-        try:
-            with open(features_path, 'r') as f:
-                self.feature_columns = json.load(f)
-        except Exception:
-            self.feature_columns = None
-
-        print("✅ Model loaded successfully!")
+        print(f"✅ ML model loaded for '{self.chain_key}'")
         return True
 
+    # ------------------------------------------------------------
+    # PREDICTION
+    # ------------------------------------------------------------
     def predict(self, transaction_dict):
-        """
-        Predict if a transaction is anomalous
-
-        Args:
-            transaction_dict: Dictionary with transaction data
-
-        Returns:
-            dict: Prediction result
-        """
-        # if self.model is None:
-        # if not self.load():
-        # return None
         if self.model is None and not self.load():
             return None
 
-        # Extract features based on available columns
         features = []
         for col in self.feature_columns:
-            if col in transaction_dict:
-                features.append(transaction_dict[col])
-            else:
-                features.append(0)
+            val = transaction_dict.get(col, 0)
+            try:
+                features.append(float(val))
+            except (ValueError, TypeError):
+                features.append(0.0)
 
-        # Scale
-        X_scaled = self.scaler.transform([features])
+        import pandas as pd
+        X_df = pd.DataFrame([features], columns=self.feature_columns)
+        X_scaled = self.scaler.transform(X_df)
 
-        # Predict
         prediction = self.model.predict(X_scaled)[0]
         score = self.model.score_samples(X_scaled)[0]
 
         return {
-            # ← cast to Python bool
-            'is_anomaly': bool(prediction == -1),
-            'score': float(score),
-            'confidence': float(1 / (1 + np.exp(-abs(score)))),
-            # ← cast to float
-            'features': {k: float(v) for k, v in zip(self.feature_columns, features)}
+            "is_anomaly": bool(prediction == -1),
+            "score": float(score),
+            "confidence": float(1 / (1 + np.exp(-abs(score)))),
+            "chain": self.chain_key,
+            "features": dict(zip(self.feature_columns, [float(f) for f in features])),
         }
 
+    # ------------------------------------------------------------
+    # EVALUATION
+    # ------------------------------------------------------------
     def evaluate(self, data=None):
-        """Evaluate model performance with actual labels"""
-        # if self.model is None:
-        # if not self.load():
-        # return
         if self.model is None and not self.load():
             return
 
@@ -257,109 +210,98 @@ class MLAnomalyDetector:
             return
 
         X_scaled = self.scaler.transform(X)
-
-        # Predict
         predictions = self.model.predict(X_scaled)
+
         anomalies = sum(1 for p in predictions if p == -1)
-        normal = sum(1 for p in predictions if p == 1)
+        total = len(predictions)
 
-        print("\n📊 Model Evaluation:")
-        print("="*50)
-        print(f"Total transactions: {len(predictions)}")
-        print(
-            f"Anomalies detected: {anomalies} ({anomalies/len(predictions)*100:.2f}%)")
-        print(
-            f"Normal transactions: {normal} ({normal/len(predictions)*100:.2f}%)")
+        print(f"\n📊 Evaluation ({self.chain_key}):")
+        print(f"   Total: {total}")
+        print(f"   Anomalies: {anomalies} ({anomalies/total*100:.2f}%)")
 
-        # Compare with actual labels (FLAG column)
-        if 'FLAG' in data.columns:
-            actual = data['FLAG'].values
-            # Convert -1 (anomaly) to 1, 1 (normal) to 0
-            predicted = [1 if p == -1 else 0 for p in predictions]
-
-            print("\n🎯 Accuracy vs Actual Labels:")
-            print(f"   Accuracy: {accuracy_score(actual, predicted):.4f}")
-            print(
-                f"   Fraud detected: {sum(predicted)} (actual fraud: {sum(actual)})")
-
-            print("\n📋 Classification Report:")
-            print(classification_report(actual, predicted,
-                  target_names=['Legitimate', 'Fraudulent']))
-
-            print("Confusion Matrix:")
-            print(confusion_matrix(actual, predicted))
-        else:
-            print("\n⚠️ No labels found in data (expected column: 'FLAG')")
-            print("   Model is unsupervised - using anomaly scores only")
-
+    # ------------------------------------------------------------
+    # THREAT LEVEL
+    # ------------------------------------------------------------
     def get_threat_level(self, transaction_dict):
-        """Get threat level based on anomaly score"""
         result = self.predict(transaction_dict)
         if not result:
-            return 'UNKNOWN'
-
-        if result['is_anomaly']:
-            score = abs(result['score'])
+            return "UNKNOWN"
+        if result["is_anomaly"]:
+            score = abs(result["score"])
             if score > 0.8:
-                return 'CRITICAL'
+                return "CRITICAL"
             elif score > 0.6:
-                return 'HIGH'
+                return "HIGH"
             elif score > 0.4:
-                return 'MEDIUM'
-            else:
-                return 'LOW'
-        return 'SAFE'
+                return "MEDIUM"
+            return "LOW"
+        return "SAFE"
 
 
+# ================================================================
+# CLI ENTRY POINT
+# ================================================================
 def main():
-    print("="*60)
-    print("🤖 ML Anomaly Detector (Ethereum Fraud Dataset)")
-    print("="*60)
+    parser = argparse.ArgumentParser(
+        description="Per-chain ML anomaly detector")
+    parser.add_argument("--chain", choices=list(CHAINS.keys()), default="ethereum",
+                        help="Which chain to train/evaluate")
+    parser.add_argument("--train", action="store_true", help="Train the model")
+    parser.add_argument("--evaluate", action="store_true",
+                        help="Evaluate the model")
+    parser.add_argument("--test", action="store_true",
+                        help="Test with a sample tx")
+    args = parser.parse_args()
 
-    detector = MLAnomalyDetector()
+    detector = MLAnomalyDetector(chain_key=args.chain)
 
-    while True:
-        print("\nSelect option:")
-        print("1. Train new model")
-        print("2. Load and evaluate model")
-        print("3. Predict on sample transaction")
-        print("4. Exit")
-
-        choice = input("\nEnter choice (1-4): ")
+    if args.train:
+        detector.train()
+    elif args.evaluate:
+        if detector.load():
+            detector.evaluate()
+    elif args.test:
+        if detector.load():
+            sample = {
+                "value_eth": 1000.0,
+                "gas_price_gwei": 500.0,
+                "gas": 100000,
+                "gas_used": 80000,
+                "input_length": 1000,
+                "is_contract": 0,
+                "success": 1,
+            }
+            result = detector.predict(sample)
+            print(f"\n📊 Test result ({args.chain}):")
+            print(f"   Anomaly: {result['is_anomaly']}")
+            print(f"   Score: {result['score']:.3f}")
+            print(f"   Confidence: {result['confidence']:.3f}")
+            print(f"   Threat: {detector.get_threat_level(sample)}")
+    else:
+        # Interactive menu
+        print("=" * 60)
+        print(f"🤖 ML Anomaly Detector — {CHAINS[args.chain]['name']}")
+        print("=" * 60)
+        print("\n1. Train model")
+        print("2. Load + evaluate")
+        print("3. Test with sample")
+        choice = input("\nEnter choice (1-3): ").strip()
 
         if choice == "1":
             detector.train()
-
         elif choice == "2":
-            detector.load()
-            detector.evaluate()
-
+            if detector.load():
+                detector.evaluate()
         elif choice == "3":
-            if not detector.load():
-                continue
-
-            print("\nSample transaction features (from dataset):")
-            sample = {
-                'Sent tnx': 100,
-                'Received Tnx': 50,
-                'total Ether sent': 10.5,
-                'total ether received': 5.2,
-                'total transactions (including tnx to create contract': 150,
-                'Number of Created Contracts': 0
-            }
-
-            result = detector.predict(sample)
-            if result:
-                print("\n📊 Result:")
-                print(
-                    f"  Is Anomaly: {'🚨 YES' if result['is_anomaly'] else '✅ NO'}")
-                print(f"  Anomaly Score: {result['score']:.3f}")
-                print(f"  Confidence: {result['confidence']:.3f}")
-                print(f"  Threat Level: {detector.get_threat_level(sample)}")
-
-        elif choice == "4":
-            print("Goodbye!")
-            break
+            if detector.load():
+                sample = {
+                    "value_eth": 1000.0, "gas_price_gwei": 500.0,
+                    "gas": 100000, "gas_used": 80000,
+                    "input_length": 1000, "is_contract": 0, "success": 1,
+                }
+                result = detector.predict(sample)
+                print(f"\n📊 Result: anomaly={result['is_anomaly']}, "
+                      f"score={result['score']:.3f}")
 
 
 if __name__ == "__main__":

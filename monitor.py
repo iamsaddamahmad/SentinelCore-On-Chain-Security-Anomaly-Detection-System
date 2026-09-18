@@ -11,15 +11,10 @@ from datetime import datetime, timezone
 from web3 import Web3
 
 from config import (
-    ALERTS_DIR,
-    BLOCKS_TO_SCAN,
-    CHAINS,
-    HIGH_GAS_THRESHOLD_GWEI,
-    LARGE_TRANSFER_THRESHOLD_ETH,
-    LIVE_CHECK_INTERVAL,
-    LOGS_DIR,
-    MONITORED_ADDRESSES,
-    SEND_TEST_ALERT_ON_STARTUP,
+    CHAINS, MONITORED_ADDRESSES,
+    LARGE_TRANSFER_THRESHOLD, HIGH_GAS_THRESHOLD,
+    BLOCKS_TO_SCAN, LIVE_CHECK_INTERVAL,
+    ALERTS_DIR, LOGS_DIR, SEND_TEST_ALERT_ON_STARTUP,
 )
 from ml_detector import MLAnomalyDetector
 from telegram_alert import TelegramAlert
@@ -100,15 +95,18 @@ class SecurityMonitor:
 
         print(f"\n✅ Connected to {len(self.connections)} chain(s)")
 
-        # Initialize ML detector
-        print("\n🧠 Initializing ML detector...")
-        self.ml_detector = MLAnomalyDetector()
-        self.ml_enabled = self.ml_detector.load()
-
-        if self.ml_enabled:
-            print("✅ ML detection enabled")
-        else:
-            print("ℹ️  ML detection disabled (train model with ml_detector.py)")
+        # Initialize per-chain ML detectors
+        print("\n🧠 Initializing per-chain ML detectors...")
+        self.ml_detectors = {}
+        for chain_key in self.connections.keys():
+            detector = MLAnomalyDetector(chain_key=chain_key)
+            if detector.load():
+                self.ml_detectors[chain_key] = detector
+                print(
+                    f"  ✅ {self.chain_configs[chain_key]['name']}: ML enabled")
+            else:
+                print(
+                    f"  ℹ️  {self.chain_configs[chain_key]['name']}: ML disabled (train first)")
 
         # Initialize Telegram alerts
         print("\n📱 Initializing Telegram alerts...")
@@ -124,11 +122,13 @@ class SecurityMonitor:
         print("\n" + "=" * 60)
         for chain_key, config in self.chain_configs.items():
             addresses = MONITORED_ADDRESSES.get(chain_key, [])
+            threshold = LARGE_TRANSFER_THRESHOLD.get(chain_key, 100)
+            gas_threshold = HIGH_GAS_THRESHOLD.get(chain_key, 200)
+            symbol = config["native_symbol"]
             print(
-                f"👁️  {config['name']}: watching {len(addresses)} address(es)")
-        print(
-            f"⚡ Alert threshold: {LARGE_TRANSFER_THRESHOLD_ETH} native tokens")
-        print(f"⛽ High gas threshold: {HIGH_GAS_THRESHOLD_GWEI} Gwei")
+                f"👁️  {config['name']}: {len(addresses)} addr | "
+                f"⚠️  >{threshold} {symbol} | ⛽ >{gas_threshold} Gwei"
+            )
         print("=" * 60)
 
     # ================================================================
@@ -238,23 +238,29 @@ class SecurityMonitor:
 
             # ---- RULE-BASED ALERTS ----
 
-            # 1. Large transfer
-            if tx_data["value_eth"] > LARGE_TRANSFER_THRESHOLD_ETH:
+            # 1. Large transfer (per-chain threshold)
+            threshold = LARGE_TRANSFER_THRESHOLD.get(chain_key, 100)
+            if tx_data["value_eth"] > threshold:
                 alerts.append({
                     "type": "LARGE_TRANSFER",
                     "severity": "HIGH",
                     "details": (
                         f"{tx_data['value_eth']:.4f} {chain_config['native_symbol']} "
-                        f"transferred on {chain_config['name']}"
+                        f"transferred on {chain_config['name']} "
+                        f"(threshold: {threshold})"
                     ),
                 })
 
-            # 2. High gas price
-            if tx_data["gas_price_gwei"] > HIGH_GAS_THRESHOLD_GWEI:
+            # 2. High gas price (per-chain threshold)
+            gas_threshold = HIGH_GAS_THRESHOLD.get(chain_key, 200)
+            if tx_data["gas_price_gwei"] > gas_threshold:
                 alerts.append({
                     "type": "HIGH_GAS_PRICE",
                     "severity": "MEDIUM",
-                    "details": f"{tx_data['gas_price_gwei']:.0f} Gwei on {chain_config['name']}",
+                    "details": (
+                        f"{tx_data['gas_price_gwei']:.0f} Gwei on {chain_config['name']} "
+                        f"(threshold: {gas_threshold})"
+                    ),
                 })
 
             # 3. Contract deployment
@@ -283,10 +289,10 @@ class SecurityMonitor:
                         "details": f"Activity from monitored address {addr[:10]}... on {chain_config['name']}",
                     })
 
-            # ---- ML-BASED DETECTION ----
-            if self.ml_enabled:
+            # ---- ML-BASED DETECTION (per-chain) ----
+            if chain_key in self.ml_detectors:
                 try:
-                    ml_result = self.ml_detector.predict(tx_data)
+                    ml_result = self.ml_detectors[chain_key].predict(tx_data)
                     if ml_result and ml_result.get("is_anomaly"):
                         alerts.append({
                             "type": "ML_ANOMALY_DETECTED",
@@ -295,7 +301,7 @@ class SecurityMonitor:
                             "confidence": ml_result.get("confidence", 0),
                         })
                 except Exception as e:
-                    print(f"⚠️  ML error: {e}")
+                    print(f"⚠️  ML error on {chain_key}: {e}")
 
             return alerts, tx_data, ml_result
 
@@ -385,7 +391,7 @@ class SecurityMonitor:
         for chain_key, config in self.chain_configs.items():
             print(f"  • {config['name']} ({chain_key})")
         print(
-            f"ML detection: {'✅ ENABLED' if self.ml_enabled else '❌ DISABLED'}")
+            f"ML detection: {len(self.ml_detectors)} chain(s) enabled")
         print(f"Alerts logged to: {ALERTS_DIR}/alerts_*.json")
         print("Press Ctrl+C to stop")
         print("=" * 60)
