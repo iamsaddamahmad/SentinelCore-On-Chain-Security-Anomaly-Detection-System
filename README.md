@@ -1,6 +1,6 @@
 # 🔒 SentinelCore: On-Chain Security & Anomaly Detection System
 
-[![Python CI](https://github.com/iamsaddamahmad/SentinelCore-On-Chain-Security-Anomaly-Detection-System/actions/workflows/test.yml/badge.svg)](https://github.com/iamsaddamahmad/SentinelCore-On-Chain-Security-Anomaly-Detection-System/actions/workflows/test.yml)
+[![Python CI](https://github.com/iamsaddamahmad/SentinelCore-On-Chain-Security-Anomaly-Detection-System/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/iamsaddamahmad/SentinelCore-On-Chain-Security-Anomaly-Detection-System/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Real-time transaction monitoring with ML and Spiking Neural Network (SNN) anomaly detection.**
