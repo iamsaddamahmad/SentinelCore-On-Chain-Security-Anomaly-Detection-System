@@ -24,9 +24,11 @@ logs/
 alerts/
 *.log
 
-# Trained models (regenerable — do not commit)
+# Trained models (regenerable — do not commit, except what CI needs to load)
 models/*.pkl
 models/*.pt
+!models/isolation_forest_*.pkl
+!models/scaler_*.pkl
 !models/model_stats_*.json
 !models/features_*.json
 !models/.gitkeep
